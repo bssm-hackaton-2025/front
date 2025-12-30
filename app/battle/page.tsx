@@ -34,6 +34,7 @@ export default function BattlePage() {
     const fetchRooms = async () => {
       try {
         const data = await getRooms();
+        console.log("Fetched Rooms Data:", data); // Debugging: Check for 'id' vs 'roomId'
         setRooms(data);
       } catch (e) {
         console.error(e);
@@ -66,15 +67,21 @@ export default function BattlePage() {
   }
 
   const handleJoinClick = (room: Room) => {
+    const rId = room.roomId || room.id;
+    if (!rId) {
+      alert("Invalid Room ID");
+      return;
+    }
+
     if (room.isPrivate) {
-      setSelectedRoomId(room.roomId);
+      setSelectedRoomId(rId);
       setJoinPassword("");
       setIsJoinDialogOpen(true);
     } else {
-      joinRoom(room.roomId).then(() => {
-        router.push(`/battle/room/${room.roomId}`);
+      joinRoom(rId).then(() => {
+        router.push(`/battle/room/${rId}`);
       }).catch(() => {
-        router.push(`/battle/room/${room.roomId}`); // Try entering anyway or handle error
+        router.push(`/battle/room/${rId}`); // Try entering anyway or handle error
       });
     }
   }
@@ -159,28 +166,33 @@ export default function BattlePage() {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {rooms.map((room) => (
-              <Card
-                key={room.roomId}
-                className="p-4 cursor-pointer hover:border-primary transition-colors flex flex-col justify-between group"
-                onClick={() => handleJoinClick(room)}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-lg group-hover:text-primary truncate">{room.title}</h3>
-                    {room.isPrivate && <Shield className="w-4 h-4 text-accent" />}
+            {rooms.map((room) => {
+              const rId = room.roomId || room.id;
+              if (!rId) return null; // Skip invalid rooms
+
+              return (
+                <Card
+                  key={rId}
+                  className="p-4 cursor-pointer hover:border-primary transition-colors flex flex-col justify-between group"
+                  onClick={() => handleJoinClick(room)}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-lg group-hover:text-primary truncate">{room.title}</h3>
+                      {room.isPrivate && <Shield className="w-4 h-4 text-accent" />}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">방장: {room.hostName}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">방장: {room.hostName}</p>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>{room.teams ? room.teams.reduce((acc, t) => acc + t.users.length, 0) : 0} / {room.teams ? room.teams.reduce((acc, t) => acc + t.maxMembers, 0) : 4}</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>{room.teams ? room.teams.reduce((acc, t) => acc + t.users.length, 0) : 0} / {room.teams ? room.teams.reduce((acc, t) => acc + t.maxMembers, 0) : 4}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8">입장하기 &rarr;</Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-8">입장하기 &rarr;</Button>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              )
+            })}
           </div>
         )}
       </main>

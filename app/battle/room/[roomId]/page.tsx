@@ -3,9 +3,12 @@
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, Users, Copy, Share2, Crown, User, ShieldAlert, Timer, MapPin, Camera, Loader2 } from "lucide-react"
+import { ArrowLeft, Users, Copy, Share2, Crown, User, ShieldAlert, Timer, MapPin, Camera, Loader2, Recycle, Map as MapIcon, CheckCircle2 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
-import { getRoom, startGame, getUser, submitTrash, subscribeToGame, type Room } from "@/lib/api"
+import { getRoom, startGame, getUser, submitTrash, submitRecycle, subscribeToGame, type Room } from "@/lib/api"
+
+// Steps: 'upload' -> 'guidance' -> 'verify' -> 'complete'
+type VerificationStep = 'upload' | 'guidance' | 'verify' | 'complete';
 
 export default function RoomLobbyPage() {
     const params = useParams()
@@ -22,6 +25,12 @@ export default function RoomLobbyPage() {
     const [isUploading, setIsUploading] = useState(false)
     const [teamAScore, setTeamAScore] = useState(0)
     const [teamBScore, setTeamBScore] = useState(0)
+
+    // Verification Flow State
+    const [verificationStep, setVerificationStep] = useState<VerificationStep>('upload')
+    const [currentTrashId, setCurrentTrashId] = useState<number | null>(null)
+    const [guidanceText, setGuidanceText] = useState<string>("")
+    const [targetLocation, setTargetLocation] = useState<string>("")
 
     useEffect(() => {
         getUser().then(u => setCurrentUser(u.nickname)).catch(console.error);
@@ -47,10 +56,11 @@ export default function RoomLobbyPage() {
 
     // SSE Subscription for Real-time Scores
     useEffect(() => {
-        if (gameState !== 'playing' || !room || !room.roomId) return;
+        const rId = room?.roomId || room?.id;
+        if (gameState !== 'playing' || !room || !rId) return;
 
-        console.log("Subscribing to game SSE:", room.roomId);
-        const unsubscribe = subscribeToGame(room.roomId, (data) => {
+        console.log("Subscribing to game SSE:", rId);
+        const unsubscribe = subscribeToGame(rId, (data) => {
             console.log("SSE Received:", data);
             // Expected format: { teams: [{ name: "A", score: 10 }, { name: "B", score: 5 }] }
             if (data && data.teams && Array.isArray(data.teams)) {
@@ -62,12 +72,17 @@ export default function RoomLobbyPage() {
         });
 
         return () => unsubscribe();
-    }, [gameState, room?.roomId]);
+    }, [gameState, room?.roomId, room?.id]);
 
     const handleStartGame = async () => {
         if (!room) return;
+        const rId = room.roomId || room.id;
+        if (!rId) {
+            alert("Room ID Missing");
+            return;
+        }
         try {
-            await startGame(room.roomId);
+            await startGame(rId);
             setGameState('starting');
         } catch (e) {
             console.error(e);
@@ -84,7 +99,11 @@ export default function RoomLobbyPage() {
         try {
             // 1. Get Location
             const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject);
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                });
             });
             const locationString = `${position.coords.latitude},${position.coords.longitude}`;
 
@@ -92,9 +111,21 @@ export default function RoomLobbyPage() {
             await submitTrash(file, locationString);
 
             alert("쓰레기 인증 완료! 점수가 집계됩니다. 🎉");
-        } catch (error) {
-            console.error(error);
-            alert("업로드에 실패했습니다. 위치 권한을 확인해주세요.");
+        } catch (error: any) {
+            console.error("Location/Upload Error:", error);
+
+            // Fallback for Demo/Testing if location fails
+            if (confirm("위치 정보를 가져올 수 없습니다. \n(테스트용) 임시 위치로 등록하시겠습니까?")) {
+                try {
+                    // Mock Location (Haeundae)
+                    await submitTrash(file, "35.1587,129.1603");
+                    alert("임시 위치로 인증되었습니다. 🧪");
+                } catch (retryError) {
+                    alert("업로드 실패: 서버 오류가 발생했습니다.");
+                }
+            } else {
+                alert("업로드 취소: 위치 권한이 필요합니다.");
+            }
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = ""; // Reset
@@ -192,35 +223,15 @@ export default function RoomLobbyPage() {
                 <div className="flex-1 relative bg-gradient-to-b from-slate-800 to-slate-900 flex flex-col items-center justify-center p-4">
                     <div className="absolute inset-0 opacity-20 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/e0/Synthetik_Map.png')] bg-cover bg-center mix-blend-overlay" />
 
-                    <Card className="z-10 w-full max-w-md bg-black/40 backdrop-blur-md border-white/10 p-8 flex flex-col items-center gap-6 text-center">
-                        <div className="space-y-2">
-                            <h3 className="text-2xl font-bold text-white">쓰레기를 발견하셨나요?</h3>
-                            <p className="text-gray-400">카메라로 쓰레기를 촬영하여 점수를 획득하세요!</p>
-                        </div>
-
-                        <Button
-                            size="lg"
-                            className="w-full h-24 text-xl rounded-2xl bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-lg shadow-primary/20 transition-all active:scale-95"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isUploading}
-                        >
-                            {isUploading ? (
-                                <div className="flex items-center gap-2">
-                                    <Loader2 className="w-8 h-8 animate-spin" />
-                                    <span>업로드 중...</span>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-1">
-                                    <Camera className="w-8 h-8 mb-1" />
-                                    <span>쓰레기 인증하기</span>
-                                </div>
-                            )}
-                        </Button>
-
-                        <div className="text-xs text-gray-500 bg-black/20 px-3 py-1 rounded-full">
-                            📍 위치 정보가 함께 전송됩니다
-                        </div>
-                    </Card>
+                    <TrashVerificationCard
+                        fileInputRef={fileInputRef}
+                        isUploading={isUploading}
+                        setIsUploading={setIsUploading}
+                        handleTrashUpload={handleTrashUpload}
+                        step={verificationStep}
+                        guidance={guidanceText}
+                        targetLoc={targetLocation}
+                    />
                 </div>
 
                 {/* Quit Button */}
@@ -329,8 +340,9 @@ export default function RoomLobbyPage() {
             <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border p-4 pb-8 z-40">
                 <div className="container mx-auto px-4 flex gap-3">
                     <Button variant="outline" className="flex-1" onClick={() => {
+                        const rId = room.roomId || room.id;
                         const passInfo = room.isPrivate ? `\n비밀번호: (설정한 비밀번호를 전달하세요)` : "";
-                        alert(`[초대 정보]\n방 제목: ${room.title}\nRoom ID: ${room.roomId}${passInfo}`);
+                        alert(`[초대 정보]\n방 제목: ${room.title}\nRoom ID: ${rId}${passInfo}`);
                     }}>
                         <Copy className="w-4 h-4 mr-2" />
                         초대 정보
@@ -345,6 +357,109 @@ export default function RoomLobbyPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+// --- Refactored Sub-component for Verification Logic ---
+
+interface TrashVerificationCardProps {
+    fileInputRef: React.RefObject<HTMLInputElement | null>;
+    isUploading: boolean;
+    setIsUploading: (val: boolean) => void;
+    handleTrashUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    step: VerificationStep;
+    guidance: string;
+    targetLoc: string;
+}
+
+function TrashVerificationCard({ fileInputRef, isUploading, handleTrashUpload, step, guidance, targetLoc }: TrashVerificationCardProps) {
+    // Render based on step
+    if (step === 'complete') {
+        return (
+            <Card className="z-10 w-full max-w-md bg-black/40 backdrop-blur-md border-white/10 p-8 flex flex-col items-center gap-6 text-center animate-in zoom-in">
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="w-8 h-8 text-green-500" />
+                </div>
+                <div className="space-y-2">
+                    <h3 className="text-2xl font-bold text-white">인증 요청 완료!</h3>
+                    <p className="text-gray-400">관리자 승인 대기 중입니다.<br />(잠시 후 초기화됩니다)</p>
+                </div>
+            </Card>
+        )
+    }
+
+    if (step === 'guidance') {
+        return (
+            <Card className="z-10 w-full max-w-md bg-black/40 backdrop-blur-md border-white/10 p-8 flex flex-col items-center gap-6 text-center animate-in fade-in slide-in-from-bottom-4">
+                <div className="space-y-4">
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="p-3 bg-blue-500/20 rounded-full animate-pulse">
+                            <Recycle className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-blue-400">AI 분석 완료</h3>
+                    </div>
+
+                    <div className="bg-white/5 p-4 rounded-xl w-full text-left space-y-2">
+                        <p className="text-sm text-gray-400">쓰레기 종류</p>
+                        <p className="text-lg font-bold text-white">{guidance}</p>
+                        <div className="h-px bg-white/10 my-2" />
+                        <p className="text-sm text-gray-400">배출 장소</p>
+                        <p className="text-lg font-bold text-accent flex items-center gap-2">
+                            <MapPin className="w-4 h-4" />
+                            {targetLoc}
+                        </p>
+                    </div>
+
+                    <p className="text-sm text-gray-300">
+                        위 장소로 이동하여<br />
+                        <span className="font-bold text-white">분리수거 하는 모습</span>을 촬영해주세요.
+                    </p>
+                </div>
+
+                <Button
+                    size="lg"
+                    className="w-full text-lg font-bold bg-blue-600 hover:bg-blue-700"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                >
+                    <Camera className="w-5 h-5 mr-2" />
+                    도착! 인증샷 촬영
+                </Button>
+            </Card>
+        )
+    }
+
+    // Default: 'upload'
+    return (
+        <Card className="z-10 w-full max-w-md bg-black/40 backdrop-blur-md border-white/10 p-8 flex flex-col items-center gap-6 text-center">
+            <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-white">쓰레기를 발견하셨나요?</h3>
+                <p className="text-gray-400">카메라로 쓰레기를 촬영하여 점수를 획득하세요!</p>
+            </div>
+
+            <Button
+                size="lg"
+                className="w-full h-24 text-xl rounded-2xl bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+            >
+                {isUploading ? (
+                    <div className="flex items-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span>업로드 중...</span>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center gap-1">
+                        <Camera className="w-8 h-8 mb-1" />
+                        <span>쓰레기 인증하기</span>
+                    </div>
+                )}
+            </Button>
+
+            <div className="text-xs text-gray-500 bg-black/20 px-3 py-1 rounded-full">
+                📍 위치 정보가 함께 전송됩니다
+            </div>
+        </Card>
     )
 }
 

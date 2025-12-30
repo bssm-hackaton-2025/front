@@ -50,7 +50,7 @@ export default function CouponPage() {
                         </div>
                         <p className="text-muted-foreground">보유한 쿠폰이 없습니다.</p>
                         <Link href="/store">
-                            <Button variant="outline">포인트로 쿠폰 교환하러 가기</Button>
+                            <Button variant="outline">쓰레기 줍고 쿠폰 받으러 가기</Button>
                         </Link>
                     </div>
                 ) : (

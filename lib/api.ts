@@ -11,6 +11,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ocean-saver-server.p
 // TYPES
 export interface Room {
     roomId: number;
+    id?: number; // Backend compatibility
     title: string;
     isPrivate: boolean;
     hostName: string;
@@ -311,10 +312,20 @@ export async function submitRecycle(trashId: number, file: File, location: strin
         body: formData
     });
 
+    console.log(`[API] submitRecycle Status: ${res.status}`);
+
     if (!res.ok) {
         throw new Error(`Failed to submit recycle: ${res.status}`);
     }
-    return true; // 204 No Content
+
+    // Safely handle response body (might be empty for 201/204)
+    const text = await res.text();
+    try {
+        return text ? JSON.parse(text) : true;
+    } catch (e) {
+        console.warn("[API] submitRecycle: Failed to parse JSON, returning true", e);
+        return true;
+    }
 }
 
 // 4. Admin: Approve Trash
