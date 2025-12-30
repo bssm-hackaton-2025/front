@@ -10,10 +10,10 @@ declare global {
 }
 
 interface MapProps {
-    hotspots: Hotspot[]
+    items: any[]
 }
 
-export default function Map({ hotspots }: MapProps) {
+export default function Map({ items }: MapProps) {
     const mapRef = useRef<HTMLDivElement>(null)
     const mapInstance = useRef<any>(null)
     const overlaysRef = useRef<any[]>([])
@@ -61,7 +61,7 @@ export default function Map({ hotspots }: MapProps) {
      * ------------------------------- */
     useEffect(() => {
         if (!isMapReady || !mapInstance.current) return
-        if (hotspots.length === 0) return
+        if (!items || items.length === 0) return
 
         // 기존 오버레이 제거
         overlaysRef.current.forEach(o => o.setMap(null))
@@ -70,8 +70,12 @@ export default function Map({ hotspots }: MapProps) {
         const map = mapInstance.current
         const geocoder = new window.kakao.maps.services.Geocoder()
 
-        hotspots.forEach((spot, index) => {
-            geocoder.addressSearch(spot.locationName, (result: any, status: any) => {
+        items.forEach((item: any, index: number) => {
+            // Use item.location for address search
+            const address = item.location || item.locationName // Fallback for hotspots if mixed
+            if (!address) return
+
+            geocoder.addressSearch(address, (result: any, status: any) => {
                 if (status !== window.kakao.maps.services.Status.OK) return
 
                 const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x)
@@ -80,7 +84,7 @@ export default function Map({ hotspots }: MapProps) {
           <div style="text-align:center;">
             <div style="
               width:32px;height:32px;
-              background:#2563eb;
+              background:#ef4444; /* Red for Trash */
               color:white;
               border-radius:50%;
               display:flex;
@@ -91,7 +95,7 @@ export default function Map({ hotspots }: MapProps) {
               border:2px solid white;
               box-shadow:0 2px 6px rgba(0,0,0,0.3);
             ">
-              ${index + 1}
+              🗑️
             </div>
             <div style="
               margin-top:4px;
@@ -101,7 +105,7 @@ export default function Map({ hotspots }: MapProps) {
               font-size:11px;
               box-shadow:0 1px 4px rgba(0,0,0,0.2);
             ">
-              ${spot.locationName}
+              ${address}
             </div>
           </div>
         `
@@ -117,7 +121,7 @@ export default function Map({ hotspots }: MapProps) {
                 overlaysRef.current.push(overlay)
             })
         })
-    }, [isMapReady, hotspots])
+    }, [isMapReady, items])
 
     /* -------------------------------
      * 3. 레이아웃 강제 재계산

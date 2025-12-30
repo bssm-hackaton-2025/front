@@ -339,29 +339,20 @@ export interface AnalyzeResponse {
 }
 
 export async function getRecycleAnalyze(): Promise<AnalyzeResponse> {
-    console.log("[API] getRecycleAnalyze Called");
-    try {
-        const headers = await getAuthHeaders();
-        console.log("[API] Fetching /recycle/analyze...");
-        const res = await fetch(`${API_URL}/recycle/analyze`, {
-            method: 'GET',
-            headers
-        });
-        console.log("[API] /recycle/analyze Status:", res.status);
+    console.log("[API] getRecycleAnalyze Called (MOCK MODE)");
 
-        if (!res.ok) {
-            console.warn("[API Error] (Recycle Analyze), returning empty hotspots:", res.status);
-            // Fallback provided by consumer (app/map/page.tsx) or return empty here
-            throw new Error("Failed to fetch recycle analysis");
-        }
-        const json = await res.json();
-        console.log("[API] /recycle/analyze JSON:", json);
-        return json;
-    } catch (e) {
-        console.warn("[Network Error] (Recycle Analyze):", e);
-        // We throw here so the UI can handle fallback or show error
-        throw e;
-    }
+    // Simulate network delay slightly for realism (optional)
+    // await new Promise(resolve => setTimeout(resolve, 500));
+
+    return {
+        topHotspots: [
+            { locationName: "부산 해운대구" },
+            { locationName: "강원도 강릉시" },
+            { locationName: "제주도 서귀포시" },
+            { locationName: "인천광역시 중구" },
+            { locationName: "서울특별시 한강공원" }
+        ]
+    };
 }
 
 // --- STORE / EXPERIENCE APIs ---
@@ -380,7 +371,7 @@ export interface Experience {
 export async function getExperiences(): Promise<Experience[]> {
     try {
         const headers = await getAuthHeaders();
-        const res = await fetch(`${API_URL}/experience`, {
+        const res = await fetch(`${API_URL}/experiences`, {
             method: 'GET',
             headers
         });
@@ -431,7 +422,7 @@ const MOCK_EXPERIENCES: Experience[] = [
 
 export async function getExperience(id: string | number): Promise<Experience> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/experience/${id}`, {
+    const res = await fetch(`${API_URL}/experiences/${id}`, {
         method: 'GET',
         headers
     });
@@ -446,6 +437,7 @@ export async function getExperience(id: string | number): Promise<Experience> {
 export async function registerStore(formData: FormData) {
     const headers = await getAuthHeaders();
     delete (headers as any)['Content-Type']; // Multipart
+    console.log("[API] Registering Store with Headers:", headers); // Debug log
 
     const res = await fetch(`${API_URL}/experiences`, {
         method: 'POST',

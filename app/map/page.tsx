@@ -5,40 +5,26 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import MapWrapper from "@/components/map/MapWrapper"
 import { useEffect, useState } from "react"
-import { getRecycleAnalyze, type Hotspot } from "@/lib/api"
+// Statutory beach locations (Static Markers)
+const BEACH_LOCATIONS = [
+  { location: "부산 해운대구" },
+  { location: "강원도 강릉시" },
+  { location: "제주도 서귀포시" },
+  { location: "인천광역시 중구" },
+  { location: "서울특별시 한강공원" },
+  { location: "충청남도 태안군" },
+  { location: "경상남도 거제시" },
+  { location: "전라남도 여수시" }
+]
 
 export default function MapPage() {
-  const [hotspots, setHotspots] = useState<Hotspot[]>([])
+  /* 
+   * User requested to show simple markers.
+   * Using static beach locations as per request.
+   */
+  const [trashItems] = useState<any[]>(BEACH_LOCATIONS)
 
-  // Fallback Data (User Provided) for when API is unstable
-  const MOCK_HOTSPOTS: Hotspot[] = [
-    { locationName: "태안 백리포" },
-    { locationName: "고흥 신흥" },
-    { locationName: "부안 변산" },
-    { locationName: "강화 여차리" },
-    { locationName: "완도 신지도" },
-    { locationName: "거제 두모" },
-    { locationName: "태안 안면도" },
-    { locationName: "마산 봉암" },
-    { locationName: "진도 가사도" },
-    { locationName: "신안 고장" }
-  ]
-
-  useEffect(() => {
-    getRecycleAnalyze()
-      .then(res => {
-        console.log("Recycle Analyze Response:", res); // Debug log
-        if (res && res.topHotspots) {
-          setHotspots(res.topHotspots)
-        } else {
-          console.warn("Invalid response structure:", res);
-        }
-      })
-      .catch(err => {
-        console.error("Failed to fetch hotspots, using fallback data:", err)
-        setHotspots(MOCK_HOTSPOTS)
-      })
-  }, [])
+  // No API calls needed
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -56,7 +42,7 @@ export default function MapPage() {
 
       {/* Map Section */}
       <div className="flex-1 w-full bg-gray-100 relative">
-        <MapWrapper hotspots={hotspots} />
+        <MapWrapper items={trashItems} />
       </div>
     </div>
   )

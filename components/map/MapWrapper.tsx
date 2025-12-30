@@ -15,9 +15,9 @@ const Map = dynamic(() => import("./Map"), {
 })
 
 interface MapWrapperProps {
-    hotspots: Hotspot[]
+    items: any[]
 }
 
-export default function MapWrapper({ hotspots }: MapWrapperProps) {
-    return <Map hotspots={hotspots} />
+export default function MapWrapper({ items }: MapWrapperProps) {
+    return <Map items={items} />
 }

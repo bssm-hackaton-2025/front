@@ -44,7 +44,7 @@ export default function StorePage() {
                         <div>
                             <h2 className="text-xl font-bold mb-1">지역 상점을 이용해보세요</h2>
                             <p className="text-sm text-muted-foreground">
-                                적립한 포인트로 다양한 혜택을 받을 수 있습니다.
+                                보유하고 있는 쿠폰으로 다양한 혜택을 받을 수 있습니다.
                             </p>
                         </div>
                     </div>
