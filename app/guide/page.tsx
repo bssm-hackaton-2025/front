@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -13,6 +13,59 @@ export default function GuidePage() {
     const [result, setResult] = useState<GeminiGuideResponse | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
+    const [currentAddress, setCurrentAddress] = useState<string>("")
+    const [isLocationLoading, setIsLocationLoading] = useState(true)
+
+    // Fetch Location on Mount
+    useEffect(() => {
+        if (!navigator.geolocation) {
+            setCurrentAddress("위치 정보 없음")
+            setIsLocationLoading(false)
+            return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords
+
+                // Wait for Kakao to be ready
+                const interval = setInterval(() => {
+                    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                        clearInterval(interval)
+
+                        window.kakao.maps.load(() => {
+                            const geocoder = new window.kakao.maps.services.Geocoder()
+                            const coord = new window.kakao.maps.LatLng(latitude, longitude)
+
+                            geocoder.coord2Address(coord.getLng(), coord.getLat(), (result: any, status: any) => {
+                                if (status === window.kakao.maps.services.Status.OK) {
+                                    const addr = result[0].road_address
+                                        ? result[0].road_address.address_name
+                                        : result[0].address.address_name
+                                    console.log("[Guide] Location Found:", addr)
+                                    setCurrentAddress(addr)
+                                } else {
+                                    setCurrentAddress("위치 변환 실패")
+                                }
+                                setIsLocationLoading(false)
+                            })
+                        })
+                    }
+                }, 100)
+
+                // Timeout
+                setTimeout(() => {
+                    clearInterval(interval)
+                    if (isLocationLoading) setIsLocationLoading(false)
+                }, 5000)
+            },
+            (err) => {
+                console.error("Geolocation Error:", err)
+                setCurrentAddress("위치 권한 없음")
+                setIsLocationLoading(false)
+            }
+        )
+    }, [])
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -23,11 +76,11 @@ export default function GuidePage() {
         setResult(null)
 
         try {
-            // Use a default location or get real location if needed. 
-            // For guide, maybe loose location is fine, but API requires it.
-            // Let's use a placeholder for now or browser geolocation if we want to be fancy.
-            const location = "부산광역시 해운대구"
-            const data = await getRecycleGuide(trashName, location)
+            // Use real location if available, otherwise fallback
+            const locationToSend = currentAddress || "알 수 없는 위치"
+            console.log("[Guide] Sending Query:", trashName, "Location:", locationToSend)
+
+            const data = await getRecycleGuide(trashName, locationToSend)
             setResult(data)
         } catch (err) {
             console.error(err)
@@ -47,10 +100,12 @@ export default function GuidePage() {
                             <ArrowLeft className="w-5 h-5" />
                         </Button>
                     </Link>
-                    <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-primary" />
-                        AI 분리수거 가이드
-                    </h1>
+                    <div>
+                        <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 text-primary" />
+                            AI 분리수거 가이드
+                        </h1>
+                    </div>
                 </div>
             </header>
 

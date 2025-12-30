@@ -105,61 +105,6 @@ async function getAuthHeaders() {
         authToken = localStorage.getItem("accessToken");
     }
 
-    // Auto-login test user if no token (DEV ONLY)
-    if (!authToken) {
-        try {
-            console.log("Auto-logging in as test user...");
-            const randomId = Math.floor(Math.random() * 10000);
-            const loginRes = await fetch(`${API_URL}/auth`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: `test${randomId}@test.com`,
-                    password: "password123"
-                })
-            });
-
-            if (loginRes.ok) {
-                const data = await loginRes.json();
-                authToken = data.accessToken;
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem("accessToken", data.accessToken);
-                    localStorage.setItem("refreshToken", data.refreshToken);
-                }
-            } else {
-                // Try Signup if login failed (First time)
-                await fetch(`${API_URL}/users`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: `test${randomId}@test.com`,
-                        nickname: `User${randomId}`,
-                        password: "password123"
-                    })
-                });
-                // Retry login
-                const retryLogin = await fetch(`${API_URL}/auth`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: `test${randomId}@test.com`,
-                        password: "password123"
-                    })
-                });
-                if (retryLogin.ok) {
-                    const data = await retryLogin.json();
-                    authToken = data.accessToken;
-                    if (typeof window !== 'undefined') {
-                        localStorage.setItem("accessToken", data.accessToken);
-                        localStorage.setItem("refreshToken", data.refreshToken);
-                    }
-                }
-            }
-        } catch (e) {
-            console.error("Auto-login failed:", e);
-        }
-    }
-
     return {
         'Content-Type': 'application/json',
         'Authorization': authToken ? `Bearer ${authToken}` : '',
@@ -196,9 +141,14 @@ export async function signup(email: string, nickname: string, password: string) 
     });
 
     if (!res.ok) {
-        throw new Error("Signup failed");
+        throw new Error(`Signup failed: ${res.status}`);
     }
-    return res.json();
+    // Handle potential empty body for 201 Created
+    try {
+        return await res.json();
+    } catch (e) {
+        return { success: true }; // Fallback if no body
+    }
 }
 
 export async function getRooms(): Promise<Room[]> {
@@ -490,6 +440,23 @@ export async function getExperience(id: string | number): Promise<Experience> {
         throw new Error("Failed to fetch experience details");
     }
     return res.json();
+}
+
+// 7. Register Store (Owner)
+export async function registerStore(formData: FormData) {
+    const headers = await getAuthHeaders();
+    delete (headers as any)['Content-Type']; // Multipart
+
+    const res = await fetch(`${API_URL}/experiences`, {
+        method: 'POST',
+        headers,
+        body: formData
+    });
+
+    if (!res.ok) {
+        throw new Error(`Failed to register store: ${res.status}`);
+    }
+    return true; // 204 or 201
 }
 
 // --- GEMINI API ---

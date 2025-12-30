@@ -226,9 +226,9 @@ export default function RoomLobbyPage() {
                 {/* Quit Button */}
                 <div className="p-4 bg-black/50 backdrop-blur-md border-t border-white/10 flex justify-center">
                     <Button variant="destructive" onClick={() => {
-                        if (confirm('전투를 포기하시겠습니까?')) setGameState('lobby')
+                        if (confirm('전투를 나가시겠습니까?')) setGameState('lobby')
                     }}>
-                        전투 포기
+                        전투 나가기
                     </Button>
                 </div>
             </div>
@@ -270,7 +270,7 @@ export default function RoomLobbyPage() {
                 <div className="grid grid-cols-2 gap-4">
                     {/* Team A */}
                     <div className="space-y-3">
-                        <div className="text-center font-bold text-primary mb-2">TEAM A</div>
+                        <div className="text-center font-bold text-primary mb-2">파도 팀</div>
                         {Array.from({ length: room.teams[0]?.maxMembers || 2 }).map((_, idx) => {
                             const user = room.teams[0]?.users[idx]
                             return (
@@ -298,7 +298,7 @@ export default function RoomLobbyPage() {
 
                     {/* Team B */}
                     <div className="space-y-3">
-                        <div className="text-center font-bold text-accent mb-2">TEAM B</div>
+                        <div className="text-center font-bold text-accent mb-2">해초 팀</div>
                         {Array.from({ length: room.teams[1]?.maxMembers || 2 }).map((_, idx) => {
                             const user = room.teams[1]?.users[idx]
                             return (

@@ -31,21 +31,31 @@ export default function HomePage() {
   }, [])
 
   const handleAuth = async () => {
+    console.log("[Auth] handleAuth started", { isSignUpMode, email });
     try {
       if (isSignUpMode) {
+        console.log("[Auth] Calling signup...");
         await signup(email, nickname, password);
+        console.log("[Auth] Signup successful. Calling login...");
         await login(email, password); // Auto login after signup
+        console.log("[Auth] Login successful.");
         alert("회원가입 및 로그인 성공!");
       } else {
+        console.log("[Auth] Calling login...");
         await login(email, password);
+        console.log("[Auth] Login successful.");
         alert("로그인 성공!");
       }
+      console.log("[Auth] Fetching user profile...");
       const user = await getUser();
+      console.log("[Auth] User profile fetched:", user);
       setCurrentUser(user);
       setIsLoginOpen(false);
-    } catch (e) {
-      console.error(e);
-      alert("인증 실패. 입력을 확인해주세요.");
+    } catch (e: any) {
+      console.error("[Auth] Error caught:", e);
+      let msg = "인증 실패. 입력을 확인해주세요.";
+      if (e.message) msg += ` (${e.message})`;
+      alert(msg);
     }
   }
 
@@ -146,10 +156,12 @@ export default function HomePage() {
           </div>
           <div className="flex items-start justify-between mb-4 relative z-10">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-xs font-bold">Lv. 1</div>
-                <div className="px-2 py-1 rounded-md bg-accent/20 text-accent text-xs font-semibold">바다의 수호자</div>
-              </div>
+              {currentUser && (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-xs font-bold">Lv. 1</div>
+                  <div className="px-2 py-1 rounded-md bg-accent/20 text-accent text-xs font-semibold">바다의 수호자</div>
+                </div>
+              )}
               <h2 className="text-lg font-bold text-foreground mb-1">Ocean Saver</h2>
               <p className="text-xs text-muted-foreground">바다의 악당 해양 쓰레기를 처리하고, 리워드를 받아</p>
               <p className="text-xs text-muted-foreground mb-4">지역 상점에서 혜택을 누리세요</p>

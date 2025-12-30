@@ -16,8 +16,6 @@ export default function StorePage() {
             .then(setExperiences)
             .catch(err => {
                 console.error(err)
-                // Mock data if API fails (optional, or just show empty)
-                // setExperiences(MOCK_STORES)
             })
             .finally(() => setLoading(false))
     }, [])
@@ -62,6 +60,25 @@ export default function StorePage() {
                     </h3>
                     <span className="text-sm text-muted-foreground">{experiences.length}곳</span>
                 </div>
+
+                <Link href="/store/register">
+                    <Card className="mb-6 p-4 border-dashed border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer group">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-background rounded-full group-hover:scale-110 transition-transform">
+                                    <Store className="w-5 h-5 text-primary" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-bold text-sm text-primary">사장님이신가요?</p>
+                                    <p className="text-xs text-muted-foreground">업체 등록하고 지역 주민에게 홍보하세요!</p>
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-primary font-bold">
+                                등록하기 &rarr;
+                            </Button>
+                        </div>
+                    </Card>
+                </Link>
 
                 {loading ? (
                     <div className="text-center py-10 text-muted-foreground">로딩 중...</div>
