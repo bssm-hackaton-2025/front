@@ -434,15 +434,25 @@ export async function getExperience(id: string | number): Promise<Experience> {
 }
 
 // 7. Register Store (Owner)
-export async function registerStore(formData: FormData) {
+// 7. Register Store (Owner)
+export interface StoreRegistrationRequest {
+    businessName: string;
+    ownerName: string;
+    businessRegistrationNumber: string;
+    location: string;
+    description: string;
+    // file is excluded for JSON, or handled separately if needed
+}
+
+export async function registerStore(data: StoreRegistrationRequest) {
     const headers = await getAuthHeaders();
-    delete (headers as any)['Content-Type']; // Multipart
-    console.log("[API] Registering Store with Headers:", headers); // Debug log
+    // Do NOT delete Content-Type (keep application/json)
+    console.log("[API] Registering Store (JSON) with Headers:", headers);
 
     const res = await fetch(`${API_URL}/experiences`, {
         method: 'POST',
         headers,
-        body: formData
+        body: JSON.stringify(data)
     });
 
     if (!res.ok) {
@@ -476,6 +486,33 @@ export async function getRecycleGuide(trashName: string, location: string): Prom
 
     if (!res.ok) {
         throw new Error("Failed to get recycling guide");
+    }
+    return res.json();
+}
+
+// 8. User Coupon Wallet
+export interface Coupon {
+    id: number;
+    experienceName: string; // e.g., "10% Discount"
+    businessName: string;   // e.g., "Ocean Cafe"
+    validUntil?: string;    // ISO Date
+    isUsed: boolean;
+}
+
+export async function getMyCoupons(): Promise<Coupon[]> {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/users/me/coupons`, {
+        method: 'GET',
+        headers
+    });
+
+    if (!res.ok) {
+        // Fallback for demo if API isn't ready
+        console.warn("Failed to fetch coupons, returning mock data");
+        return [
+            { id: 101, experienceName: "아메리카노 1잔 무료", businessName: "오션 카페", isUsed: false, validUntil: "2024-12-31" },
+            { id: 102, experienceName: "서핑 입문 강습 50% 할인", businessName: "서핑 스쿨", isUsed: false }
+        ];
     }
     return res.json();
 }

@@ -20,11 +20,18 @@ export default function StoreRegisterPage() {
 
         try {
             const formData = new FormData(e.target as HTMLFormElement)
-            // Add any missing required fields if necessary
-            // e.g. formData.append("experienceName", "신규 입점 혜택 (음료 1잔)") // Default benefit
-            // formData.append("price", "3000")
 
-            await registerStore(formData)
+            // Convert FormData to JSON object for API
+            const requestData = {
+                businessName: formData.get("businessName") as string,
+                ownerName: formData.get("ownerName") as string,
+                businessRegistrationNumber: formData.get("businessRegistrationNumber") as string,
+                location: formData.get("location") as string,
+                description: formData.get("description") as string,
+            }
+
+            // Note: File is currently not sent in JSON mode as per user request
+            await registerStore(requestData)
             setStep(3)
         } catch (error) {
             console.error("Registration failed:", error)

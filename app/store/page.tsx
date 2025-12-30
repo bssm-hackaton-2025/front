@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, ShoppingBag, MapPin, Store, Tag, Sparkles } from "lucide-react"
+import { ArrowLeft, ShoppingBag, MapPin, Store, Tag, Sparkles, Ticket } from "lucide-react"
 import { getExperiences, type Experience } from "@/lib/api"
 
 export default function StorePage() {
@@ -24,13 +24,21 @@ export default function StorePage() {
         <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-accent/5 pb-20">
             {/* Header */}
             <header className="sticky top-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border">
-                <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-                    <Link href="/">
-                        <Button variant="ghost" size="icon" className="rounded-full">
-                            <ArrowLeft className="w-5 h-5" />
+                <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Link href="/">
+                            <Button variant="ghost" size="icon" className="rounded-full">
+                                <ArrowLeft className="w-5 h-5" />
+                            </Button>
+                        </Link>
+                        <h1 className="text-xl font-bold text-foreground">상점 / 체험</h1>
+                    </div>
+                    <Link href="/store/coupons">
+                        <Button variant="ghost" size="sm" className="rounded-full gap-2 text-primary font-bold bg-primary/10 hover:bg-primary/20">
+                            <Ticket className="w-4 h-4" />
+                            내 쿠폰
                         </Button>
                     </Link>
-                    <h1 className="text-xl font-bold text-foreground">상점 / 체험</h1>
                 </div>
             </header>
 
@@ -118,10 +126,6 @@ export default function StorePage() {
                                     </p>
                                     <div className="flex items-center justify-between pt-3 border-t border-border">
                                         <div className="text-sm font-semibold">{store.ownerName} 사장님</div>
-                                        <div className="flex items-center gap-1 text-primary font-bold">
-                                            <Sparkles className="w-4 h-4" />
-                                            {store.price.toLocaleString()} P
-                                        </div>
                                     </div>
                                 </div>
                             </Card>

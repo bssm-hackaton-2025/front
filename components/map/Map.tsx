@@ -23,13 +23,30 @@ export default function Map({ items }: MapProps) {
     /* -------------------------------
      * 1. Kakao Map 초기화
      * ------------------------------- */
+    /* -------------------------------
+     * 1. Kakao Map 초기화
+     * ------------------------------- */
     useEffect(() => {
-        if (!mapRef.current) return
-
+        console.log("[Map] Component Mounted. Checking Kakao SDK...");
         const initMap = () => {
-            window.kakao.maps.load(() => {
-                if (!mapRef.current || mapInstance.current) return
+            // Check if Kakao is loaded
+            if (!window.kakao || !window.kakao.maps) {
+                console.log("[Map] Kakao SDK not ready. Retrying...");
+                // Retry after 100ms
+                setTimeout(initMap, 100)
+                return
+            }
 
+            console.log("[Map] Kakao SDK Ready. Initializing Map...");
+
+            // Check if map instance already exists
+            if (!mapRef.current || mapInstance.current) {
+                console.log("[Map] Map ref missing or instance already exists.");
+                return
+            }
+
+            window.kakao.maps.load(() => {
+                console.log("[Map] Kakao Maps Load Callback Fired");
                 const map = new window.kakao.maps.Map(mapRef.current, {
                     center: new window.kakao.maps.LatLng(36.5, 127.8),
                     level: 13,
@@ -40,20 +57,13 @@ export default function Map({ items }: MapProps) {
 
                 mapInstance.current = map
                 setIsMapReady(true)
+                console.log("[Map] Map Instance Created.");
             })
         }
 
-        // SDK 없으면 직접 로드
-        if (!window.kakao) {
-            const script = document.createElement("script")
-            script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`
-            script.async = true
-            script.onerror = () => setLoadingError(true)
-            script.onload = initMap
-            document.head.appendChild(script)
-        } else {
-            initMap()
-        }
+        initMap()
+
+        // Timeout cleanup not strictly necessary as it's just checking window
     }, [])
 
     /* -------------------------------
@@ -71,20 +81,30 @@ export default function Map({ items }: MapProps) {
         const geocoder = new window.kakao.maps.services.Geocoder()
 
         items.forEach((item: any, index: number) => {
-            // Use item.location for address search
+            // Check if item has explicit lat/lng coordinates (bypass Geocoding)
+            if (item.lat && item.lng) {
+                const coords = new window.kakao.maps.LatLng(item.lat, item.lng)
+                createMarker(map, coords, item.location || item.locationName, index, true)
+                return
+            }
+
+            // Fallback: Use item.location for address search
             const address = item.location || item.locationName // Fallback for hotspots if mixed
             if (!address) return
 
             geocoder.addressSearch(address, (result: any, status: any) => {
                 if (status !== window.kakao.maps.services.Status.OK) return
-
                 const coords = new window.kakao.maps.LatLng(result[0].y, result[0].x)
+                createMarker(map, coords, address, index)
+            })
+        })
 
-                const content = `
+        function createMarker(map: any, position: any, title: string, index: number, isStatic: boolean = false) {
+            const content = `
           <div style="text-align:center;">
             <div style="
               width:32px;height:32px;
-              background:#ef4444; /* Red for Trash */
+              background:${isStatic ? '#2563eb' : '#ef4444'}; /* Blue for Static, Red for Trash */
               color:white;
               border-radius:50%;
               display:flex;
@@ -95,7 +115,7 @@ export default function Map({ items }: MapProps) {
               border:2px solid white;
               box-shadow:0 2px 6px rgba(0,0,0,0.3);
             ">
-              🗑️
+              ${isStatic ? '📍' : '🗑️'}
             </div>
             <div style="
               margin-top:4px;
@@ -105,22 +125,19 @@ export default function Map({ items }: MapProps) {
               font-size:11px;
               box-shadow:0 1px 4px rgba(0,0,0,0.2);
             ">
-              ${address}
+              ${title}
             </div>
           </div>
         `
-
-                const overlay = new window.kakao.maps.CustomOverlay({
-                    map,
-                    position: coords,
-                    content,
-                    yAnchor: 1,
-                    zIndex: 10 + index,
-                })
-
-                overlaysRef.current.push(overlay)
+            const overlay = new window.kakao.maps.CustomOverlay({
+                map,
+                position,
+                content,
+                yAnchor: 1,
+                zIndex: 10 + index,
             })
-        })
+            overlaysRef.current.push(overlay)
+        }
     }, [isMapReady, items])
 
     /* -------------------------------
