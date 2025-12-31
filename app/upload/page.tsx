@@ -150,7 +150,7 @@ export default function UploadPage() {
             </div>
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-foreground">인증 확인 중...</h3>
-              <p className="text-muted-foreground">AI가 분리수거 상태를 분석하고 있습니다.<br />잠시만 기다려주세요.</p>
+              <p className="text-muted-foreground">분리수거 상태를 분석하고 있습니다.<br />잠시만 기다려주세요.</p>
             </div>
           </Card>
         )}
