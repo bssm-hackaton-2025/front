@@ -46,7 +46,8 @@ export function LocationDisplay() {
                 // Wait for Kakao SDK to load
                 checkKakaoInterval = window.setInterval(() => {
                     console.log("[LocationDisplay] Checking window.kakao...", !!window.kakao);
-                    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+                    // Relaxed check: services might not be ready until load() is called
+                    if (window.kakao && window.kakao.maps) {
                         window.clearInterval(checkKakaoInterval);
                         checkKakaoInterval = undefined;
 
