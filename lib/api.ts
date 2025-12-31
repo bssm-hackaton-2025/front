@@ -119,6 +119,11 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     // Merge headers
     options.headers = { ...headers, ...options.headers };
 
+    // If body is FormData, delete 'Content-Type' so browser can set boundary
+    if (options.body instanceof FormData) {
+        delete (options.headers as any)['Content-Type'];
+    }
+
     let res = await fetch(url, options);
 
     if (res.status === 401) {
@@ -302,9 +307,6 @@ export async function startGame(roomId: string | number) {
 
 // 1. Submit Trash (1st Verification)
 export async function submitTrash(file: File, location: string) {
-    const headers = await getAuthHeaders();
-    // Remove Content-Type for FormData (browser sets it with boundary)
-    delete (headers as any)['Content-Type'];
 
     const formData = new FormData();
     formData.append("imageData", file);
@@ -352,8 +354,6 @@ export async function getTrashes(): Promise<TrashItem[]> {
 
 // 3. Submit Recycle (2nd Verification)
 export async function submitRecycle(trashId: number, file: File, location: string) {
-    const headers = await getAuthHeaders();
-    delete (headers as any)['Content-Type'];
 
     const formData = new FormData();
     formData.append("imageData", file);
