@@ -22,6 +22,7 @@ export default function UploadPage() {
   const [guidanceText, setGuidanceText] = useState<string>("")
   const [targetLocation, setTargetLocation] = useState<string>("")
   const [earnedCoupon, setEarnedCoupon] = useState<{ name: string, shop: string } | null>(null)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   const handleTrashUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -65,6 +66,11 @@ export default function UploadPage() {
 
         await submitRecycle(trashIdToUse, file, locationString);
 
+        // --- 3-Second Verification Delay ---
+        setIsVerifying(true);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        setIsVerifying(false);
+
         // --- Mock Coupon Issuance for Demo ---
         setEarnedCoupon({
           name: "아메리카노 1잔 무료",
@@ -89,6 +95,11 @@ export default function UploadPage() {
             setVerificationStep('guidance');
           } else if (verificationStep === 'guidance') {
             await submitRecycle(currentTrashId || 101, file, mockLoc);
+
+            setIsVerifying(true);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            setIsVerifying(false);
+
             setEarnedCoupon({
               name: "아메리카노 1잔 무료",
               shop: "오션 카페 (해운대점)"
@@ -130,7 +141,21 @@ export default function UploadPage() {
         />
 
         {/* --- Verification Card logic (duplicated from Battle for standalone) --- */}
-        {verificationStep === 'complete' && (
+        {isVerifying && (
+          <Card className="z-10 w-full max-w-md bg-card/50 backdrop-blur-md border-border p-8 flex flex-col items-center gap-6 text-center animate-in fade-in zoom-in duration-300">
+            <div className="relative w-24 h-24 flex items-center justify-center">
+              <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <Recycle className="w-10 h-10 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-foreground">인증 확인 중...</h3>
+              <p className="text-muted-foreground">AI가 분리수거 상태를 분석하고 있습니다.<br />잠시만 기다려주세요.</p>
+            </div>
+          </Card>
+        )}
+
+        {!isVerifying && verificationStep === 'complete' && (
           <Card className="z-10 w-full max-w-md bg-green-950/40 backdrop-blur-md border-green-500/30 p-8 flex flex-col items-center gap-6 text-center animate-in zoom-in duration-500">
             <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center animate-bounce">
               <CheckCircle2 className="w-10 h-10 text-green-400" />
@@ -170,7 +195,7 @@ export default function UploadPage() {
           </Card>
         )}
 
-        {verificationStep === 'guidance' && (
+        {!isVerifying && verificationStep === 'guidance' && (
           <Card className="z-10 w-full max-w-md bg-card/50 backdrop-blur-md border-border p-8 flex flex-col items-center gap-6 text-center animate-in fade-in slide-in-from-bottom-4">
             <div className="space-y-4 w-full">
               <div className="flex flex-col items-center gap-2">
@@ -200,8 +225,12 @@ export default function UploadPage() {
             <Button
               size="lg"
               className="w-full text-lg font-bold"
-              onClick={() => {
-                // Direct bypass as requested by user
+              onClick={async () => {
+                // Direct bypass with delay
+                setIsVerifying(true);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                setIsVerifying(false);
+
                 setEarnedCoupon({
                   name: "아메리카노 1잔 무료",
                   shop: "오션 카페 (해운대점)"
@@ -216,7 +245,7 @@ export default function UploadPage() {
           </Card>
         )}
 
-        {verificationStep === 'upload' && (
+        {!isVerifying && verificationStep === 'upload' && (
           <Card className="z-10 w-full max-w-md bg-card/50 backdrop-blur-md border-border p-8 flex flex-col items-center gap-6 text-center">
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-foreground">쓰레기를 발견하셨나요?</h3>
