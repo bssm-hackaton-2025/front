@@ -27,7 +27,6 @@ export function LocationDisplay() {
 
     useEffect(() => {
         let checkKakaoInterval: number | undefined;
-        let kakaoLoadTimeout: number | undefined;
 
         console.log("[LocationDisplay] Starting effect...");
         setLocationName("GPS 확인 중...");
@@ -49,7 +48,6 @@ export function LocationDisplay() {
                     console.log("[LocationDisplay] Checking window.kakao...", !!window.kakao);
                     if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
                         window.clearInterval(checkKakaoInterval);
-                        window.clearTimeout(kakaoLoadTimeout);
                         checkKakaoInterval = undefined;
 
                         setLocationName("주소 변환 시작...");
@@ -78,19 +76,7 @@ export function LocationDisplay() {
                     }
                 }, 500)
 
-                // Timeout after 10 seconds if Kakao SDK doesn't load
-                kakaoLoadTimeout = window.setTimeout(() => {
-                    if (checkKakaoInterval) {
-                        window.clearInterval(checkKakaoInterval);
-                        checkKakaoInterval = undefined;
-
-                        if (!window.kakao) {
-                            console.error("Kakao Maps SDK not found on window object after timeout.");
-                            setError("지도 로드 실패 (도메인/키 확인 필요)");
-                            setLocationName("지도를 불러올 수 없음");
-                        }
-                    }
-                }, 10000)
+                // Timeout logic removed as per request
             },
             (err) => {
                 console.error("Geolocation error:", err)
@@ -109,7 +95,6 @@ export function LocationDisplay() {
         // Cleanup function for useEffect
         return () => {
             if (checkKakaoInterval) window.clearInterval(checkKakaoInterval);
-            if (kakaoLoadTimeout) window.clearTimeout(kakaoLoadTimeout);
         };
     }, [triggerFetch])
 
