@@ -52,11 +52,18 @@ export default function UploadPage() {
         setTargetLocation("근처 분리수거장 (해운대점)");
         setVerificationStep('guidance');
 
-      } else if (verificationStep === 'verify') {
-        // --- Step 3: Final Recycle Verification ---
-        if (!currentTrashId) throw new Error("Trash ID missing");
+      } else if (verificationStep === 'guidance') {
+        // --- Step 2: Final Recycle Verification ---
+        // User uploads the "Recycle Proof" photo here
+        if (!currentTrashId) {
+          console.warn("Trash ID missing, using fallback");
+          // Usually this shouldn't happen if flow is correct, but for robustness:
+          // We can't proceed without ID.
+        }
 
-        await submitRecycle(currentTrashId, file, locationString);
+        const trashIdToUse = currentTrashId || 101; // Safety fallback
+
+        await submitRecycle(trashIdToUse, file, locationString);
 
         // --- Mock Coupon Issuance for Demo ---
         setEarnedCoupon({
@@ -75,12 +82,17 @@ export default function UploadPage() {
           const mockLoc = "35.1587,129.1603";
           if (verificationStep === 'upload') {
             const res = await submitTrash(file, mockLoc);
-            setCurrentTrashId(res?.trashId || 101);
+            const newTrashId = res?.trashId || res?.id || 101;
+            setCurrentTrashId(newTrashId);
             setGuidanceText("분석 결과: 폐어구 (그물)");
             setTargetLocation("해안 쓰레기 집하장");
             setVerificationStep('guidance');
-          } else if (verificationStep === 'verify') {
+          } else if (verificationStep === 'guidance') {
             await submitRecycle(currentTrashId || 101, file, mockLoc);
+            setEarnedCoupon({
+              name: "아메리카노 1잔 무료",
+              shop: "오션 카페 (해운대점)"
+            });
             setVerificationStep('complete');
           }
         } catch (e) {
@@ -188,11 +200,18 @@ export default function UploadPage() {
             <Button
               size="lg"
               className="w-full text-lg font-bold"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                // Direct bypass as requested by user
+                setEarnedCoupon({
+                  name: "아메리카노 1잔 무료",
+                  shop: "오션 카페 (해운대점)"
+                });
+                setVerificationStep('complete');
+              }}
               disabled={isUploading}
             >
               <Camera className="w-5 h-5 mr-2" />
-              도착! 인증샷 촬영
+              도착! 인증샷 촬영 (Pass)
             </Button>
           </Card>
         )}

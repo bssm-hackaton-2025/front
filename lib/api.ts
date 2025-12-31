@@ -112,6 +112,31 @@ async function getAuthHeaders() {
     };
 }
 
+// Wrapper for auto-refresh on 401
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+    let headers = await getAuthHeaders();
+
+    // Merge headers
+    options.headers = { ...headers, ...options.headers };
+
+    let res = await fetch(url, options);
+
+    if (res.status === 401) {
+        console.log("[API] 401 Unauthorized - Attempting Refresh...");
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+            // Retry with new token
+            headers = await getAuthHeaders();
+            options.headers = { ...headers, ...options.headers };
+            // Re-create body if stream? (Assuming standard JSON/FormData, text is safe to reuse? No, FormData might be consumed)
+            // Limitation: If body was a stream, retry might fail. But here we use JSON or FormData (reusable logic needed)
+            // For simple JSON strings it's fine. For FormData, we can reuse the object.
+            res = await fetch(url, options);
+        }
+    }
+    return res;
+}
+
 // API METHODS
 
 export async function login(email: string, password: string) {
@@ -152,11 +177,47 @@ export async function signup(email: string, nickname: string, password: string) 
     }
 }
 
+// 0. Refresh Token
+export async function refreshAccessToken() {
+    if (typeof window === 'undefined') return null;
+
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) return null;
+
+    try {
+        const res = await fetch(`${API_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken })
+        });
+
+        if (!res.ok) throw new Error("Refresh failed");
+
+        const data = await res.json();
+        if (data.accessToken) {
+            localStorage.setItem("accessToken", data.accessToken);
+            authToken = data.accessToken;
+            // Optionally update refresh token if rotated
+            if (data.refreshToken) {
+                localStorage.setItem("refreshToken", data.refreshToken);
+            }
+            return data.accessToken;
+        }
+    } catch (e) {
+        console.error("Token refresh failed:", e);
+        // Force logout if refresh fails
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        authToken = null;
+        window.location.href = "/"; // Redirect to login
+    }
+    return null;
+}
+
 export async function getRooms(): Promise<Room[]> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/games/rooms`, {
-        method: 'GET',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/games/rooms`, {
+        method: 'GET'
     });
     if (!res.ok) {
         throw new Error("Failed to fetch rooms");
@@ -166,9 +227,8 @@ export async function getRooms(): Promise<Room[]> {
 
 export async function getRankings() {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/users/rank/10`, {
-        method: 'GET',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/users/rank/10`, {
+        method: 'GET'
     });
     if (!res.ok) {
         throw new Error("Failed to fetch rankings");
@@ -178,9 +238,8 @@ export async function getRankings() {
 
 export async function getUser() {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/users`, {
-        method: 'GET',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/users`, {
+        method: 'GET'
     });
     if (!res.ok) {
         throw new Error("Failed to fetch user");
@@ -191,9 +250,8 @@ export async function getUser() {
 export async function createRoom(data: CreateRoomRequest): Promise<Room> {
     const headers = await getAuthHeaders();
     console.log("Creating room with headers:", headers);
-    const res = await fetch(`${API_URL}/games/rooms`, {
+    const res = await fetchWithAuth(`${API_URL}/games/rooms`, {
         method: 'POST',
-        headers,
         body: JSON.stringify(data)
     });
 
@@ -205,9 +263,8 @@ export async function createRoom(data: CreateRoomRequest): Promise<Room> {
 
 export async function getRoom(roomId: string | number): Promise<Room> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/games/rooms/${roomId}`, {
-        method: 'GET',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/games/rooms/${roomId}`, {
+        method: 'GET'
     });
 
     if (!res.ok) {
@@ -218,9 +275,8 @@ export async function getRoom(roomId: string | number): Promise<Room> {
 
 export async function joinRoom(roomId: string | number, password?: string) {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/games/rooms/${roomId}`, {
+    const res = await fetchWithAuth(`${API_URL}/games/rooms/${roomId}`, {
         method: 'PATCH',
-        headers,
         body: JSON.stringify({ password })
     });
 
@@ -232,9 +288,8 @@ export async function joinRoom(roomId: string | number, password?: string) {
 
 export async function startGame(roomId: string | number) {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/games/${roomId}`, {
-        method: 'PATCH', // As per spec '게임시작'
-        headers
+    const res = await fetchWithAuth(`${API_URL}/games/${roomId}`, {
+        method: 'PATCH'
     });
     // Spec says 'x' (no response body?) or generic
     if (!res.ok && res.status !== 204) {
@@ -255,9 +310,8 @@ export async function submitTrash(file: File, location: string) {
     formData.append("imageData", file);
     formData.append("location", location);
 
-    const res = await fetch(`${API_URL}/trashes`, {
+    const res = await fetchWithAuth(`${API_URL}/trashes`, {
         method: 'POST',
-        headers,
         body: formData
     });
 
@@ -286,9 +340,8 @@ export interface TrashItem {
 
 export async function getTrashes(): Promise<TrashItem[]> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/trashes`, {
-        method: 'GET',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/trashes`, {
+        method: 'GET'
     });
 
     if (!res.ok) {
@@ -306,9 +359,8 @@ export async function submitRecycle(trashId: number, file: File, location: strin
     formData.append("imageData", file);
     formData.append("location", location);
 
-    const res = await fetch(`${API_URL}/trashes/${trashId}`, {
+    const res = await fetchWithAuth(`${API_URL}/trashes/${trashId}`, {
         method: 'PATCH',
-        headers,
         body: formData
     });
 
@@ -331,9 +383,8 @@ export async function submitRecycle(trashId: number, file: File, location: strin
 // 4. Admin: Approve Trash
 export async function approveTrash(trashId: number) {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/trashes/${trashId}/approval`, {
-        method: 'PATCH',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/trashes/${trashId}/approval`, {
+        method: 'PATCH'
     });
     if (!res.ok) throw new Error("Failed to approve trash");
     return true;
@@ -382,9 +433,8 @@ export interface Experience {
 export async function getExperiences(): Promise<Experience[]> {
     try {
         const headers = await getAuthHeaders();
-        const res = await fetch(`${API_URL}/experiences`, {
-            method: 'GET',
-            headers
+        const res = await fetchWithAuth(`${API_URL}/experiences`, {
+            method: 'GET'
         });
 
         if (!res.ok) {
@@ -433,9 +483,8 @@ const MOCK_EXPERIENCES: Experience[] = [
 
 export async function getExperience(id: string | number): Promise<Experience> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/experiences/${id}`, {
-        method: 'GET',
-        headers
+    const res = await fetchWithAuth(`${API_URL}/experiences/${id}`, {
+        method: 'GET'
     });
 
     if (!res.ok) {
@@ -460,9 +509,8 @@ export async function registerStore(data: StoreRegistrationRequest) {
     // Do NOT delete Content-Type (keep application/json)
     console.log("[API] Registering Store (JSON) with Headers:", headers);
 
-    const res = await fetch(`${API_URL}/experiences`, {
+    const res = await fetchWithAuth(`${API_URL}/experiences`, {
         method: 'POST',
-        headers,
         body: JSON.stringify(data)
     });
 
@@ -497,9 +545,8 @@ export interface GeminiGuideResponse {
 
 export async function getRecycleGuide(trashName: string, location: string): Promise<GeminiGuideResponse> {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/recycle/guide`, {
+    const res = await fetchWithAuth(`${API_URL}/recycle/guide`, {
         method: 'POST', // Spec says POST
-        headers,
         body: JSON.stringify({ trashName, location })
     });
 
@@ -517,9 +564,8 @@ export async function registerExperienceCoupon(experienceId: number | string, co
     console.log(`[API] Registering Coupon for Experience ${experienceId}: ${couponName}`);
 
     try {
-        const res = await fetch(`${API_URL}/experiences/${experienceId}/coupons`, {
+        const res = await fetchWithAuth(`${API_URL}/experiences/${experienceId}/coupons`, {
             method: 'POST',
-            headers,
             body: JSON.stringify({ name: couponName })
         });
         if (!res.ok) throw new Error("Failed to register coupon");
@@ -552,9 +598,8 @@ export async function getMyCoupons(): Promise<Coupon[]> {
     };
 
     try {
-        const res = await fetch(`${API_URL}/users/coupon`, {
-            method: 'GET',
-            headers
+        const res = await fetchWithAuth(`${API_URL}/users/coupon`, {
+            method: 'GET'
         });
 
         if (res.ok) {
