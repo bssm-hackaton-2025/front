@@ -99,16 +99,18 @@ export function LocationDisplay() {
                 setError(msg)
                 setLocationName(msg)
             },
-            { enableHighAccuracy: true }
+            {
+                enableHighAccuracy: false,
+                maximumAge: 60000,
+                timeout: 5000
+            }
         )
 
         // Cleanup function for useEffect
         return () => {
-            // Use window.clear... to be safe
             if (checkKakaoInterval) window.clearInterval(checkKakaoInterval);
             if (kakaoLoadTimeout) window.clearTimeout(kakaoLoadTimeout);
         };
-
     }, [triggerFetch])
 
     if (error) {
@@ -134,3 +136,5 @@ export function LocationDisplay() {
         </div>
     )
 }
+
+
